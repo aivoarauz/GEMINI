@@ -64,22 +64,28 @@ async def main():
     dp.include_router(handlers_admin.router)
     dp.include_router(handlers_user.router)
 
-    # Orqa fonda HTTP serverni ishga tushirish
-    runner = await start_web_server()
-
-    # Webhook'ni o'chirib, to'planib qolgan xabarlarni tozalaymiz
-    await bot.delete_webhook(drop_pending_updates=True)
-
-    logger.info("Bot polling rejimida ishga tushdi...")
-
+    runner = None
     try:
+        # Orqa fonda HTTP serverni ishga tushirish
+        runner = await start_web_server()
+
+        # Webhook'ni o'chirib, to'planib qolgan xabarlarni tozalaymiz
+        await bot.delete_webhook(drop_pending_updates=True)
+
+        logger.info("Bot polling rejimida ishga tushdi...")
         await dp.start_polling(bot)
+    except Exception as e:
+        logger.error(f"Kutilmagan xatolik: {e}")
     finally:
-        # Bot to'xtaganda resurslarni va sessiyalarni xavfsiz yopamiz
-        await runner.cleanup()
+        # Resurslarni to'g'ri ketma-ketlikda xavfsiz yopamiz
+        if runner:
+            await runner.cleanup()
         await bot.session.close()
-        logger.info("Bot to'xtatildi va resurslar bo'shatildi.")
+        logger.info("Bot to'xtatildi va resurslar muvaffaqiyatli bo'shatildi.")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Bot qo'lda to'xtatildi.")
