@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 async def start_web_server():
-    """Render Web Service talab qiladigan PORT-ni tinglash uchun soxta server."""
+    """Render Web Service portini ochiq ushlab turuvchi server."""
     app = web.Application()
 
     async def health(request):
@@ -43,10 +43,7 @@ async def start_web_server():
 async def main():
     if not BOT_TOKEN:
         logger.error("BOT_TOKEN environment o'zgaruvchisi topilmadi!")
-        raise RuntimeError(
-            "BOT_TOKEN environment o'zgaruvchisi topilmadi! "
-            ".env faylini yoki Render Environment Variables bo'limini tekshiring."
-        )
+        raise RuntimeError("BOT_TOKEN topilmadi!")
 
     bot = Bot(
         token=BOT_TOKEN,
@@ -57,7 +54,7 @@ async def main():
     db = Database()
     dp["db"] = db
 
-    # Middleware va routerlarni ulash
+    # Middleware va routerlar
     dp.message.outer_middleware(SubscriptionMiddleware(db))
     dp.callback_query.outer_middleware(SubscriptionMiddleware(db))
 
@@ -66,26 +63,24 @@ async def main():
 
     runner = None
     try:
-        # Orqa fonda HTTP serverni ishga tushirish
         runner = await start_web_server()
 
-        # Webhook'ni o'chirib, to'planib qolgan xabarlarni tozalaymiz
+        # Telegram'dagi eski xatoli webhook'ni tozalaymiz
         await bot.delete_webhook(drop_pending_updates=True)
 
-        logger.info("Bot polling rejimida ishga tushdi...")
+        logger.info("Bot polling rejimida muvaffaqiyatli ishga tushdi...")
         await dp.start_polling(bot)
     except Exception as e:
-        logger.error(f"Kutilmagan xatolik: {e}")
+        logger.error(f"Xatolik yuz berdi: {e}")
     finally:
-        # Resurslarni to'g'ri ketma-ketlikda xavfsiz yopamiz
         if runner:
             await runner.cleanup()
         await bot.session.close()
-        logger.info("Bot to'xtatildi va resurslar muvaffaqiyatli bo'shatildi.")
+        logger.info("Bot to'xtatildi.")
 
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
-        logger.info("Bot qo'lda to'xtatildi.")
+        logger.info("Bot to'xtatildi.")
